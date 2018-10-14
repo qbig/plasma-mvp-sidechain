@@ -10,12 +10,14 @@ import (
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 var _ utxo.UTXO = &BaseUTXO{}
 
 // Implements UTXO interface
 type BaseUTXO struct {
+	MerkleHash     []byte
 	InputAddresses [2]common.Address
 	Address        common.Address
 	Amount         uint64
@@ -23,13 +25,27 @@ type BaseUTXO struct {
 	Position       PlasmaPosition
 }
 
-func ProtoUTXO(msg sdk.Msg) utxo.UTXO {
-	spendmsg, ok := msg.(SpendMsg)
+func ProtoUTXO(tx sdk.Tx) utxo.UTXO {
+	baseTx, ok := tx.(BaseTx)
 	if !ok {
 		return nil
 	}
+
+	txBytes, err := rlp.EncodeToBytes(baseTx)
+	if err != nil {
+		return nil
+	}
+
+	txHash := ethcrypto.Keccak256(txBytes)
+	sigs := baseTx.GetSignatures()
+	for _, sig := range sigs {
+		txHash = append(txHash, sig.Bytes()...)
+	}
+	merkleHash := ethcrypto.Keccak256(txHash)
+
 	return &BaseUTXO{
-		InputAddresses: [2]common.Address{spendmsg.Owner0, spendmsg.Owner1},
+		MerkleHash:     merkleHash,
+		InputAddresses: [2]common.Address{baseTx.Msg.Owner0, baseTx.Msg.Owner1},
 	}
 }
 
@@ -118,6 +134,10 @@ func (baseutxo BaseUTXO) GetDenom() string {
 
 func (baseutxo *BaseUTXO) SetDenom(denom string) error {
 	return nil
+}
+
+func (baseutxo BaseUTXO) GetMerkleHash() []byte {
+	return baseutxo.MerkleHash
 }
 
 //----------------------------------------
