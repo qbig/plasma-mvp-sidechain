@@ -67,7 +67,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			return ctx, res, true
 		}
 
-		// Verify that confirmation signature
+		// verify the confirmation signature
 		res = processConfirmSig(ctx, utxoMapper, metadataMapper, position0, addr0, spendMsg.ConfirmSigs0)
 		if !res.IsOK() {
 			return ctx, res, true
@@ -135,12 +135,15 @@ func processConfirmSig(
 	}
 	inputAddresses := plasmaUTXO.GetInputAddresses()
 
-	merkleHash := plasmaUTXO.GetMerkleHash()
-	key := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(key, plasmaUTXO.GetPosition().Get()[0].Uint64())
-	blockHash := metadataMapper.GetMetadata(ctx, key)
-	merkleHash = append(merkleHash, blockHash...)
-	confirmHash := ethcrypto.Keccak256(merkleHash)
+	// Get the block hash
+	blknumKey := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(blknumKey, plasmaUTXO.GetPosition().Get()[0].Uint64())
+	blockHash := metadataMapper.GetMetadata(ctx, blknumKey)
+
+	msgHash := plasmaUTXO.GetMsgHash()
+
+	hash := append(msgHash, blockHash...)
+	confirmHash := ethcrypto.Keccak256(hash)
 
 	pubKey0, err0 := ethcrypto.SigToPub(confirmHash, sigs[0].Bytes())
 	if err0 != nil || !reflect.DeepEqual(ethcrypto.PubkeyToAddress(*pubKey0).Bytes(), inputAddresses[0].Bytes()) {

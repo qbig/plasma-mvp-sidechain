@@ -17,7 +17,7 @@ var _ utxo.UTXO = &BaseUTXO{}
 
 // Implements UTXO interface
 type BaseUTXO struct {
-	MerkleHash     []byte
+	MsgHash        []byte
 	InputAddresses [2]common.Address
 	Address        common.Address
 	Amount         uint64
@@ -25,27 +25,17 @@ type BaseUTXO struct {
 	Position       PlasmaPosition
 }
 
-func ProtoUTXO(tx sdk.Tx) utxo.UTXO {
-	baseTx, ok := tx.(BaseTx)
+func ProtoUTXO(msg sdk.Msg) utxo.UTXO {
+	spendmsg, ok := msg.(SpendMsg)
 	if !ok {
 		return nil
 	}
 
-	txBytes, err := rlp.EncodeToBytes(baseTx)
-	if err != nil {
-		return nil
-	}
-
-	txHash := ethcrypto.Keccak256(txBytes)
-	sigs := baseTx.GetSignatures()
-	for _, sig := range sigs {
-		txHash = append(txHash, sig.Bytes()...)
-	}
-	merkleHash := ethcrypto.Keccak256(txHash)
+	msgHash := ethcrypto.Keccak256(spendmsg.GetSignBytes())
 
 	return &BaseUTXO{
-		MerkleHash:     merkleHash,
-		InputAddresses: [2]common.Address{baseTx.Msg.Owner0, baseTx.Msg.Owner1},
+		MsgHash:        msgHash,
+		InputAddresses: [2]common.Address{spendmsg.Owner0, spendmsg.Owner1},
 	}
 }
 
@@ -58,6 +48,10 @@ func NewBaseUTXO(addr common.Address, inputaddr [2]common.Address, amount uint64
 		Denom:          denom,
 		Position:       position,
 	}
+}
+
+func (baseutxo BaseUTXO) GetMsgHash() []byte {
+	return baseutxo.MsgHash
 }
 
 //Implements UTXO
@@ -134,10 +128,6 @@ func (baseutxo BaseUTXO) GetDenom() string {
 
 func (baseutxo *BaseUTXO) SetDenom(denom string) error {
 	return nil
-}
-
-func (baseutxo BaseUTXO) GetMerkleHash() []byte {
-	return baseutxo.MerkleHash
 }
 
 //----------------------------------------

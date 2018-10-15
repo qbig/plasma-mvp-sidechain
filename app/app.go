@@ -1,9 +1,11 @@
 package app
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	auth "github.com/FourthState/plasma-mvp-sidechain/auth"
 	"github.com/FourthState/plasma-mvp-sidechain/types"
+	"github.com/FourthState/plasma-mvp-sidechain/x/metadata"
 	"github.com/FourthState/plasma-mvp-sidechain/x/utxo"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"io"
@@ -36,8 +38,12 @@ type ChildChain struct {
 	// keys to access the substores
 	capKeyMainStore *sdk.KVStoreKey
 
+	capKeyMetadataStore *sdk.KVStoreKey
+
 	// Manage addition and deletion of utxo's
 	utxoMapper utxo.Mapper
+
+	metadataMapper metadata.MetadataMapper
 }
 
 func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildChain {
@@ -47,11 +53,12 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 	bapp.SetCommitMultiStoreTracer(traceStore)
 
 	var app = &ChildChain{
-		BaseApp:         bapp,
-		cdc:             cdc,
-		txIndex:         0,
-		feeAmount:       new(uint64),
-		capKeyMainStore: sdk.NewKVStoreKey("main"),
+		BaseApp:             bapp,
+		cdc:                 cdc,
+		txIndex:             0,
+		feeAmount:           new(uint64),
+		capKeyMainStore:     sdk.NewKVStoreKey("main"),
+		capKeyMetadataStore: sdk.NewKVStoreKey("metadata"),
 	}
 
 	// define the utxoMapper
@@ -60,16 +67,21 @@ func NewChildChain(logger log.Logger, db dbm.DB, traceStore io.Writer) *ChildCha
 		cdc,
 	)
 
+	app.metadataMapper = metadata.NewMetadataMapper(
+		app.capKeyMetadataStore,
+	)
+
 	app.Router().
 		AddRoute("spend", utxo.NewSpendHandler(app.utxoMapper, app.nextPosition, types.ProtoUTXO))
 
 	app.MountStoresIAVL(app.capKeyMainStore)
+	app.MountStoresIAVL(app.capKeyMetadataStore)
 
 	app.SetInitChainer(app.initChainer)
 	app.SetEndBlocker(app.endBlocker)
 
 	// NOTE: type AnteHandler func(ctx Context, tx Tx) (newCtx Context, result Result, abort bool)
-	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.feeUpdater))
+	app.SetAnteHandler(auth.NewAnteHandler(app.utxoMapper, app.metadataMapper, app.feeUpdater))
 
 	err := app.LoadLatestVersion(app.capKeyMainStore)
 	if err != nil {
@@ -98,10 +110,18 @@ func (app *ChildChain) initChainer(ctx sdk.Context, req abci.RequestInitChain) a
 
 	// load the initial stake information
 	return abci.ResponseInitChain{Validators: []abci.Validator{abci.Validator{
-		PubKey: tmtypes.TM2PB.PubKey(genesisState.Validator),
+		PubKey:  tmtypes.TM2PB.PubKey(genesisState.Validator),
 		Address: genesisState.Validator.Address(),
-		Power: 1,
+		Power:   1,
 	}}}
+}
+
+func (app *ChildChain) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+	blknumKey := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(blknumKey, uint64(ctx.BlockHeight()))
+
+	app.metadataMapper.StoreMetadata(ctx, blknumKey, ctx.BlockHeader().LastBlockHash)
+	return abci.ResponseBeginBlock{}
 }
 
 func (app *ChildChain) endBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
