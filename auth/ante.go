@@ -18,7 +18,7 @@ import (
 // confirm signatures, and increments the feeAmount
 func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapper, feeUpdater utxo.FeeUpdater) sdk.AnteHandler {
 	return func(
-		ctx sdk.Context, tx sdk.Tx,
+		ctx sdk.Context, tx sdk.Tx, simulate bool,
 	) (_ sdk.Context, _ sdk.Result, abort bool) {
 
 		baseTx, ok := tx.(types.BaseTx)
@@ -68,7 +68,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		}
 
 		// verify the confirmation signature if the input is not a deposit
-		if position0.DepositNum == 0 && position0.TxIndex != 2^16-1 {
+		if position0.DepositNum == 0 && position0.TxIndex != 1<<16-1 {
 			res = processConfirmSig(ctx, utxoMapper, metadataMapper, position0, addr0, spendMsg.ConfirmSigs0)
 			if !res.IsOK() {
 				return ctx, res, true
@@ -91,7 +91,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 				return ctx, res, true
 			}
 
-			if position1.DepositNum == 0 && position1.TxIndex != 2^16-1 {
+			if position1.DepositNum == 0 && position1.TxIndex != 1<<16-1 {
 				res = processConfirmSig(ctx, utxoMapper, metadataMapper, position1, addr1, spendMsg.ConfirmSigs1)
 				if !res.IsOK() {
 					return ctx, res, true
@@ -99,7 +99,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 			}
 		}
 
-		balanceErr := utxo.AnteHelper(ctx, utxoMapper, tx, feeUpdater)
+		balanceErr := utxo.AnteHelper(ctx, utxoMapper, tx, simulate, feeUpdater)
 		if balanceErr != nil {
 			return ctx, balanceErr.Result(), true
 		}
