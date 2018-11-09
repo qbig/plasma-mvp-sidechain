@@ -68,7 +68,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 		}
 
 		// verify the confirmation signature if the input is not a deposit
-		if position0.DepositNum == 0 {
+		if position0.DepositNum == 0 && position0.TxIndex != 2^16-1 {
 			res = processConfirmSig(ctx, utxoMapper, metadataMapper, position0, addr0, spendMsg.ConfirmSigs0)
 			if !res.IsOK() {
 				return ctx, res, true
@@ -91,7 +91,7 @@ func NewAnteHandler(utxoMapper utxo.Mapper, metadataMapper metadata.MetadataMapp
 				return ctx, res, true
 			}
 
-			if position1.DepositNum == 0 {
+			if position1.DepositNum == 0 && position1.TxIndex != 2^16-1 {
 				res = processConfirmSig(ctx, utxoMapper, metadataMapper, position1, addr1, spendMsg.ConfirmSigs1)
 				if !res.IsOK() {
 					return ctx, res, true

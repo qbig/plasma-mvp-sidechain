@@ -13,6 +13,11 @@ import (
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
+const (
+	// Only allowed Denomination on this plasma chain
+	Denom = "Ether"
+)
+
 var _ utxo.UTXO = &BaseUTXO{}
 
 // Implements UTXO interface
@@ -123,7 +128,7 @@ func (baseutxo *BaseUTXO) SetPosition(position utxo.Position) error {
 }
 
 func (baseutxo BaseUTXO) GetDenom() string {
-	return "Ether"
+	return Denom
 }
 
 func (baseutxo *BaseUTXO) SetDenom(denom string) error {
