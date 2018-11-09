@@ -36,19 +36,6 @@ func feeUpdater(outputs []utxo.Output) sdk.Error {
 	return nil
 }
 
-// helper function for creating a utxo with the correct msg hash
-func NewBaseUTXOWithMsgHash(addr common.Address, inputaddr [2]common.Address, amount uint64,
-	denom string, position types.PlasmaPosition, msghash []byte) utxo.UTXO {
-	return &types.BaseUTXO{
-		MsgHash:        msghash,
-		InputAddresses: inputaddr,
-		Address:        addr,
-		Amount:         amount,
-		Denom:          denom,
-		Position:       position,
-	}
-}
-
 func GenSpendMsg() types.SpendMsg {
 	// Creates Basic Spend Msg with owners and recipients
 	confirmSigs := [2]types.Signature{types.Signature{}, types.Signature{}}
@@ -249,14 +236,14 @@ func TestDifferentCases(t *testing.T) {
 
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
 		msghash0 := ethcrypto.Keccak256([]byte("first utxo"))
-		utxo0 := NewBaseUTXOWithMsgHash(tc.input0.addr, inputAddr, 2000, "Ether", tc.input0.position, msghash0)
+		utxo0 := types.NewBaseUTXOWithMsgHash(tc.input0.addr, inputAddr, 2000, "Ether", tc.input0.position, msghash0)
 
 		var utxo1 utxo.UTXO
 		var msghash1 []byte
 		if tc.input1.owner_index != -1 {
 			msghash1 = ethcrypto.Keccak256([]byte("second utxo"))
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
-			utxo1 = NewBaseUTXOWithMsgHash(tc.input1.addr, inputAddr, 2000, "Ether", tc.input1.position, msghash1)
+			utxo1 = types.NewBaseUTXOWithMsgHash(tc.input1.addr, inputAddr, 2000, "Ether", tc.input1.position, msghash1)
 		}
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
