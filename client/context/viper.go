@@ -23,5 +23,6 @@ func NewClientContextFromViper() ClientContext {
 		Client:         rpc,
 		Decoder:        nil,
 		UTXOStore:      "main",
+		MetadataStore:  "metadata",
 	}
 }
