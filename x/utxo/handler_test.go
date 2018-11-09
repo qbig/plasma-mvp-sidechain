@@ -98,7 +98,7 @@ func TestHandleSpendMessage(t *testing.T) {
 	}
 
 	for index, tc := range cases {
-		ms, capKey := SetupMultiStore()
+		ms, capKey, _ := SetupMultiStore()
 
 		cdc := MakeCodec()
 		cdc.RegisterConcrete(&testUTXO{}, "x/utxo/testUTXO", nil)
