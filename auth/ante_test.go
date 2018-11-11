@@ -236,14 +236,16 @@ func TestDifferentCases(t *testing.T) {
 
 		inputAddr := getInputAddr(addrs[tc.input0.input_index0], addrs[input0_index1], tc.input0.input_index1 != -1)
 		msghash0 := ethcrypto.Keccak256([]byte("first utxo"))
-		utxo0 := types.NewBaseUTXOWithMsgHash(tc.input0.addr, inputAddr, 2000, "Ether", tc.input0.position, msghash0)
+		utxo0 := types.NewBaseUTXO(tc.input0.addr, inputAddr, 2000, "Ether", tc.input0.position)
+		utxo0.MsgHash = msghash0
 
-		var utxo1 utxo.UTXO
+		var utxo1 *types.BaseUTXO
 		var msghash1 []byte
 		if tc.input1.owner_index != -1 {
 			msghash1 = ethcrypto.Keccak256([]byte("second utxo"))
 			inputAddr = getInputAddr(addrs[input1_index0], addrs[input1_index1], tc.input0.input_index1 != -1)
-			utxo1 = types.NewBaseUTXOWithMsgHash(tc.input1.addr, inputAddr, 2000, "Ether", tc.input1.position, msghash1)
+			utxo1 = types.NewBaseUTXO(tc.input1.addr, inputAddr, 2000, "Ether", tc.input1.position)
+			utxo1.MsgHash = msghash1
 		}
 
 		blknumKey := make([]byte, binary.MaxVarintLen64)
